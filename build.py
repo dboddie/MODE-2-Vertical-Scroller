@@ -48,6 +48,9 @@ palette = {"\x00\x00\x00": 0,
            "\x80\xff\xff": 14,
            "\xff\xff\xff": 15}
 
+bits = [0x00, 0x01, 0x04, 0x05, 0x10, 0x11, 0x14, 0x15,
+        0x40, 0x41, 0x44, 0x45, 0x50, 0x51, 0x54, 0x55]
+
 def read_png(path):
 
     im = Image.open(path).convert("RGB")
@@ -82,23 +85,17 @@ def read_sprite(lines):
     
         width = len(lines[0])
         
-        # Read 4 columns at a time.
-        for column in range(0, width, 4):
+        # Read 2 columns at a time.
+        for column in range(0, width, 2):
         
             # Read the rows.
             for line in lines[row:row + 8]:
             
-                shift = 3
+                shift = 1
                 byte = 0
-                for pixel in line[column:column + 4]:
+                for pixel in line[column:column + 2]:
                 
-                    if pixel == 1:
-                        byte = byte | (0x01 << shift)
-                    elif pixel == 2:
-                        byte = byte | (0x10 << shift)
-                    elif pixel == 3:
-                        byte = byte | (0x11 << shift)
-                    
+                    byte = byte | (bits[pixel] << shift)
                     shift -= 1
                 
                 data += chr(byte)
@@ -124,31 +121,29 @@ if __name__ == "__main__":
     # Memory map
     code_start = 0x0e00
     
-    files = []
+    # Encode images.
+    sprites = ["blank", "floor1"]
+    sprite_data = ""
     
-    # Assemble the files.
-    assemble = [("mapscroll2.oph", "mapscroll2.rom")]
+    for sprite in sprites:
+        sprite_data += read_sprite(read_png(os.path.join("images", sprite) + ".png"))
     
-    code_data = {}
+    # Add padding data.
+    sprite_data += "\x00" * ((64 - len(sprites)) * 32)
     
-    for name, output in assemble:
-        if name.endswith(".oph"):
-            system("ophis " + name + " -o " + output)
-            code = open(output).read()
-        elif name.endswith(".dat"):
-            code = open(name).read()
-        elif name.endswith(".png"):
-            code = read_sprite(read_png(name))
-        else:
-            code = open(name).read().replace("\n", "\r")
-        
-        code_data[output] = code
+    # Encode level data.
+    #t = open("levels/default.txt").readlines()
     
-    # General ROM processing
+    level_data = (chr(0) + chr(0x20)) * 1280
     
-    for src, obj in assemble:
-        if not obj.endswith(".rom"):
-            files.append((obj, code_start, code_start, code_data[obj]))
+    # Assemble the source code.
+    system("ophis mapscroll2.oph -o game.rom")
+    
+    rom_data = open("game.rom").read()
+    rom_data += sprite_data
+    rom_data += level_data
+    
+    open("game.rom", "w").write(rom_data)
     
     # Exit
     sys.exit()

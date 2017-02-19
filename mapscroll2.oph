@@ -43,7 +43,22 @@
 .alias scenery_ptr $80
 .alias scenery_ptr_low $80
 .alias scenery_ptr_high $81
-.alias scenery_start $377e
+.alias scenery_start $3760
+
+.alias level_base [data_start + sprites_size]
+.alias level_ptr $82
+.alias level_ptr_low $82
+.alias level_ptr_high $83
+
+.alias sprite_base data_start
+.alias sprite_base_low <data_start
+.alias sprite_base_high >data_start
+.alias sprites_size $800
+
+.alias plot_counter $84
+.alias tile_address $85
+.alias tile_address_low $85
+.alias tile_address_high $86
 
 .org $8000
 
@@ -197,6 +212,11 @@ show:
     lda #>scenery_start
     sta scenery_ptr_high
 
+    lda #<level_base
+    sta level_ptr_low
+    lda #>level_base
+    sta level_ptr_high
+
     ; Clear the vsync interrupt bit.
 
     lda #$10
@@ -298,26 +318,51 @@ main_loop:
         dex                     ; 2 c
         bpl show_palette_loop   ; 2 c
 
-    ldx #80
-    ldy #0
+    lda #4
+    sta plot_counter
+
     plot_loop:
-        lda scroll_offset
-        sta (scenery_ptr),y
-        iny
-        sta (scenery_ptr),y
-        dey
 
-        dec scenery_ptr_low
+        ldy #0
+        lda (level_ptr),y
+        tax
+
+        clc
+        and #$e0                ; Extract the tile offset.
+        adc #sprite_base_low
+        sta tile_address_low
+
+        txa
+        and #$07                ; Extract the tile bank.
+        adc #sprite_base_high
+        sta tile_address_high
+        clc
+
+        ldy #31
+        plot_tile_loop:
+
+            lda (tile_address),y
+            sta (scenery_ptr),y
+            dey
+            bpl plot_tile_loop
+
+        sec
         lda scenery_ptr_low
-        cmp #$ff
-        bne plot_loop_next
-        dec scenery_ptr_high
-        plot_loop_next:
+        sbc #32
+        sta scenery_ptr_low
+        lda scenery_ptr_high
+        sbc #0
+        sta scenery_ptr_high
+        clc
 
-        dex
+        inc level_ptr_low
+        bne plot_loop_next
+        inc level_ptr_high
+
+        plot_loop_next:
+        dec plot_counter
         bne plot_loop
 
-    inc scroll_offset
 ;    lda scenery_ptr_low
 ;    adc #$7e
 ;    sta scenery_ptr_low
@@ -330,7 +375,7 @@ main_loop:
     cmp #$2f
     bne continue_scroll
 
-    lda #$fe
+    lda #$e0
     sta scenery_ptr_low
     lda #$7f
     sta scenery_ptr_high
@@ -427,6 +472,16 @@ main_loop:
     clc
 
     next_frame:
+
+;    lda #$00                ; Blank the palette.
+;    sta $fe08
+;    sta $fe09
+;    sta $fe0a
+;    sta $fe0b
+;    sta $fe0c
+;    sta $fe0d
+;    sta $fe0e
+;    sta $fe0f
 
     ; Wait for the vsync bit to be set.
 
@@ -575,3 +630,5 @@ palette_fe0e:
 .byte [$ff]
 palette_fe0f:
 .byte [$ff ^ [g3 | r3 | r1]]
+
+data_start:

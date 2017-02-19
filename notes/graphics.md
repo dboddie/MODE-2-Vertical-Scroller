@@ -18,3 +18,20 @@ Palette
 13  Foreground 0                                                Foreground 0
 14  Foreground 0                                                Foreground 0
 15  Foreground 0                                                Foreground 0
+
+
+Tiles
+-----
+
+64 tiles, each 32 bytes in size, arranged in blocks of 8 for convenient
+addressing:
+
+0:  0-7     (256 bytes)
+1:  8-15    (256 bytes)
+...
+7:  56-63   (256 bytes)
+
+Because the tiles take up more than 256 bytes in total, we need a way to
+quickly reference a tile, given an index.
+
+  ttt00bbb - t = tile index; b = bank number

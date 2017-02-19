@@ -1,0 +1,63 @@
+; fe08 values
+.alias b10 $80
+.alias b8 $40
+.alias b2 $20
+.alias b0 $10
+.alias g10 $08
+.alias g8 $04
+
+; fe09 values
+.alias g2 $20
+.alias g0 $10
+.alias r10 $08
+.alias r8 $04
+.alias r2 $02
+.alias r0 $01
+
+; fe0a values
+.alias b14 $80
+.alias b12 $40
+.alias b6 $20
+.alias b4 $10
+.alias g14 $08
+.alias g12 $04
+
+; fe0b values
+.alias g6 $20
+.alias g4 $10
+.alias r14 $08
+.alias r12 $04
+.alias r6 $02
+.alias r4 $01
+
+; fe0c values
+.alias b15 $80
+.alias b13 $40
+.alias b7 $20
+.alias b5 $10
+.alias g15 $08
+.alias g13 $04
+
+; fe0d values
+.alias g7 $20
+.alias g5 $10
+.alias r15 $08
+.alias r13 $04
+.alias r7 $02
+.alias r5 $01
+
+; fe0e values
+.alias b11 $80
+.alias b9 $40
+.alias b3 $20
+.alias b1 $10
+.alias g11 $08
+.alias g9 $04
+
+; fe0f values
+.alias g3 $20
+.alias g1 $10
+.alias r11 $08
+.alias r9 $04
+.alias r3 $02
+.alias r1 $01

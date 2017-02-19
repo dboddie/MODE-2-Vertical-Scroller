@@ -1,0 +1,577 @@
+; Copyright (C) 2016 David Boddie <david@boddie.org.uk>
+;
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+.include "palette_defs.oph"
+
+.alias long_field 60
+.alias short_field 59
+
+.alias fields $70
+.alias first_field $70
+.alias second_field $71
+
+.alias frame_counter $72
+.alias text_lines $73
+.alias frame_delay $74
+.alias palette_lines $75
+
+.alias initial_frame_delay 2
+.alias initial_scanlines 1
+.alias max_scanlines 40
+.alias max_palette_lines 32
+
+.alias screen_low $76
+.alias screen_high $77
+
+.alias scroll_offset $78
+.alias row_counter $79
+.alias palette_offset $7a
+.alias palette_counter $7b
+
+.alias scenery_ptr $80
+.alias scenery_ptr_low $80
+.alias scenery_ptr_high $81
+.alias scenery_start $377e
+
+.org $8000
+
+rom_start:
+.byte 0, 0, 0
+jmp service_entry
+
+; ROM type
+.byte $82       ; 6502 code (2), language ($40), service ($80)
+
+copyright_offset:
+.byte [copyright_string - rom_start - 1]
+
+; Version
+.byte 1
+
+; Title string
+.byte "Vertical scrolling test", 0
+
+; Version string
+.byte "1.0", 0
+
+copyright_string:
+.byte "(C) 2017 David Boddie", 0
+
+; Second processor relocation address
+.byte 0, $80, 0, 0
+
+service_entry:
+
+    cmp #4
+    bne service_entry_not_4
+    jmp service_command
+
+    service_entry_not_4:
+    cmp #9
+    beq service_help
+
+    service_entry_exit:
+    clc
+    rts
+
+show_name: .byte "SCROLL", 13
+show_name_end:
+
+help_text:
+.byte "Type *SCROLL to see a scrolling demo.", 13
+help_text_end:
+
+service_help:
+
+    pha
+    tya
+    pha
+    txa
+    pha
+
+    lda ($f2),y
+    cmp #13
+    bne service_help_compare
+
+    ldx #0
+    service_help_loop0:
+        lda show_name,x
+        jsr $ffee
+        inx
+        cpx #[show_name_end - show_name]
+        bne service_help_loop0
+
+    beq service_command_claimed
+
+    service_help_compare:
+
+    ldx #0
+    service_help_loop1:
+        lda ($f2),y
+        cmp show_name,x
+        bne service_command_not_found
+        iny
+        inx
+        cmp #13
+        bne service_help_loop1
+
+    ldx #0
+    service_help_loop2:
+        lda help_text,x
+        jsr $ffee
+        inx
+        cpx #[help_text_end - help_text]
+        bne service_help_loop2
+
+service_command_claimed:
+
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    pla
+    lda #0                      ; claim service command
+    rts
+
+service_command_not_found:
+    pla                         ; pop Y and X registers off the stack
+    tax
+    pla
+    tay
+    pla
+    rts
+
+service_command:
+
+    pha
+    tya                         ; push Y and X registers onto the stack
+    pha
+    txa
+    pha
+
+    ldx #0
+    service_command_loop:
+
+        lda ($f2),y
+        cmp show_name,x
+        bne service_command_not_found
+        iny
+        inx
+        cmp #13
+        bne service_command_loop
+
+show:
+
+    jsr show_message
+
+    lda #$00
+    sta screen_low
+    lda #$18
+    sta screen_high
+
+    sei
+
+    lda #initial_scanlines      ; Number of MODE 3 scanlines to display
+    sta text_lines
+
+    lda #initial_frame_delay    ; Number of frames to show each displacement.
+    sta frame_delay
+
+    lda #max_palette_lines
+    sta palette_lines
+
+    lda #<scenery_start
+    sta scenery_ptr_low
+    lda #>scenery_start
+    sta scenery_ptr_high
+
+    ; Clear the vsync interrupt bit.
+
+    lda #$10
+    sta $fe05
+
+    ; Wait until the vsync bit is cleared.
+
+    lda #$04
+    wait0:
+    bit $fe00
+    bne wait0
+
+    ; Wait until the vsync bit is set, indicating the start of a new frame.
+
+    wait1:
+    bit $fe00
+    beq wait1
+
+    lda #$10
+    sta $fe05
+
+    calibration:
+
+        jsr calibrate
+        stx $70
+    
+        jsr calibrate
+        stx $71
+
+        lda $70
+        cmp $71
+        beq calibration
+
+    bcs highest_first
+
+    lda #short_field        ; The first value is the lowest, so store a
+    sta first_field         ; slightly lower value than the second value in
+    lda #long_field         ; the first slot.
+    sta second_field
+    bcc pre_loop
+
+    highest_first:
+
+    lda #long_field         ; The first value is the highest, so store a
+    sta first_field         ; slightly lower value in the second slot.
+    lda #short_field
+    sta second_field
+
+    pre_loop:
+
+    ldx #0
+    stx frame_counter
+    lda #4                  ; Initialise the scroll offset.
+    sta scroll_offset
+
+main_loop:
+
+    lda #$18                ; MODE 3
+    sta $fe07
+    sta $282
+
+    lda #$ff                ; Blank the palette.
+    sta $fe08
+    sta $fe09
+    sta $fe0a
+    sta $fe0b
+    sta $fe0c
+    sta $fe0d
+    sta $fe0e
+    sta $fe0f
+
+    start:
+
+    ldx frame_counter       ; 3 c
+    lda fields,x            ; 4 c
+    tax
+    jsr wait_scanlines
+
+    ldx text_lines
+    jsr wait_scanlines
+
+    lda #$10                ; MODE 2
+    sta $fe07
+    sta $282
+
+    ldx palette_lines
+    cpx #0
+    beq show_palette
+
+    jsr block_scanlines
+
+    show_palette:
+
+    ldx #7
+    
+    show_palette_loop:
+        lda palette_fe08,x      ; 4 c
+        sta $fe08,x             ; 4 c
+        dex                     ; 2 c
+        bpl show_palette_loop   ; 2 c
+
+    ldx #80
+    ldy #0
+    plot_loop:
+        lda scroll_offset
+        sta (scenery_ptr),y
+        iny
+        sta (scenery_ptr),y
+        dey
+
+        dec scenery_ptr_low
+        lda scenery_ptr_low
+        cmp #$ff
+        bne plot_loop_next
+        dec scenery_ptr_high
+        plot_loop_next:
+
+        dex
+        bne plot_loop
+
+    inc scroll_offset
+;    lda scenery_ptr_low
+;    adc #$7e
+;    sta scenery_ptr_low
+;    lda scenery_ptr_high
+;    adc #$02
+;    sta scenery_ptr_high
+;    clc
+
+    lda scenery_ptr_high
+    cmp #$2f
+    bne continue_scroll
+
+    lda #$fe
+    sta scenery_ptr_low
+    lda #$7f
+    sta scenery_ptr_high
+
+    continue_scroll:
+
+    dec frame_delay
+    bne next_frame
+    lda #initial_frame_delay
+    sta frame_delay
+
+    lda #121
+    ldx #0
+    jsr $fff4
+
+    cpx #98
+    beq end_loop
+;    cpx #39
+;    beq k0_pressed
+;    cpx #48
+;    beq k1_pressed
+;    cpx #49
+;    beq k2_pressed
+;    cpx #17
+;    beq k3_pressed
+;    cpx #18
+;    beq k4_pressed
+;    jmp calculate_remaining_lines
+;
+;    k0_pressed:
+;    lda #initial_scanlines
+;    jmp reset_vcounter
+;
+;    k1_pressed:
+;    lda #[initial_scanlines + 10]
+;    jmp reset_vcounter
+;
+;    k2_pressed:
+;    lda #[initial_scanlines + 20]
+;    jmp reset_vcounter
+;
+;    k3_pressed:
+;    lda #[initial_scanlines + 30]
+;    jmp reset_vcounter
+;
+;    k4_pressed:
+
+    clc
+    lda text_lines
+    adc #10                 ; Increase the number of half scanlines to cover
+    cmp #max_scanlines      ; another MODE 3 character row.
+    bcc reset_vcounter
+
+        clc
+        lda screen_high
+        cmp #$14
+        bne up_one_line
+        lda screen_low
+        cmp #$40
+        bne up_one_line
+
+            lda #$00
+            sta screen_low
+            lda #$3b
+            sta screen_high
+            jmp store_screen_address
+
+        up_one_line:
+        sec                     ; Update the screen start address.
+        lda screen_low
+        sbc #$40
+        sta screen_low
+        lda screen_high
+        sbc #$01
+        sta screen_high
+
+        store_screen_address:
+        lda screen_low
+        sta $fe02
+        lda screen_high
+        sta $fe03
+
+        lda #initial_scanlines
+
+    reset_vcounter:
+    sta text_lines
+
+    calculate_remaining_lines:
+
+    lda #max_palette_lines
+    sec
+    sbc text_lines
+    sta palette_lines
+    clc
+
+    next_frame:
+
+    ; Wait for the vsync bit to be set.
+
+    lda #$04                ; 2 c
+    wait2:
+    bit $fe00               ; 4 c
+    beq wait2               ; 3 c
+
+    lda #$10                ; 2 c
+    sta $fe05               ; 4 c
+
+    lda frame_counter       ; 3 c
+    eor #1                  ; 2 c
+    sta frame_counter       ; 3 c
+
+    jmp main_loop
+
+end_loop:
+
+    cli
+
+    ; Restore the palette.
+    lda #$73
+    sta $fe08
+    lda #$f1
+    sta $fe09
+
+    lda #$00
+    sta $fe02
+    lda #$18
+    sta $fe03
+
+    jmp service_command_claimed
+
+calibrate:
+
+    ; Count the number of half scanlines to the end of the display. This will
+    ; wrap around in an 8-bit value.
+
+    lda #$04                ; 2 c
+    ldx #0                  ; 2 c
+    calibration_loop:
+
+        ldy #11             ; 2 c
+        delay1:
+            dey             ; 2 c
+            bne delay1      ; 3 c
+
+        inx                 ; 2 c
+
+        ; Continue until the vsync interrupt bit is set again.
+
+        bit $fe00           ; 4 c
+        beq calibration_loop; 3 c
+                            ; (11 * 5) + 2 + 9 = 66
+
+    ; Clear the vsync interrupt bit.
+
+    lda #$10
+    sta $fe05
+
+    rts
+
+wait_scanlines:
+
+    wait_loop:
+
+        ; Wait for around 64us (128 cycles) per scanline.
+
+        ldy #23             ; 2 c
+        delay0:
+            dey             ; 2 c
+            bne delay0      ; 3 c
+
+        nop                 ; 2 c
+        dex                 ; 2 c
+        bne wait_loop       ; 3 c
+                            ; (23 * 5) + 2 + 7 = 124
+    rts
+
+block_scanlines:
+
+    block_loop:
+
+        ; Wait for around 24us (48 cycles) per scanline and block by reading RAM.
+
+        ldy #9              ; 2 c
+        delay2:
+            dey             ; 2 c
+            bne delay2      ; 3 c
+
+        nop                 ; 2 c
+                            ; 49 c
+        
+        lda $70
+        dex                 ; 2 c
+        bne block_loop      ; 3 c
+
+    rts
+
+show_message:
+
+    ldy #0
+    lda #<text
+    sta $80
+    lda #>text
+    sta $81
+
+    print_loop:
+        lda ($80),y
+        jsr $ffee
+        inc $80
+        bne print_loop_next
+        inc $81
+
+        print_loop_next:
+        lda $81
+        cmp #>text_end
+        bne print_loop
+        lda $80
+        cmp #<text_end
+        bne print_loop
+
+    clc
+    rts
+
+text:
+.byte 22,2, 23,1,0,0,0,0,0,0,0,0
+.byte 17,7, 31,0,15
+.byte "  MODE 2  map demo  "
+text_end:
+
+palette_fe08:
+.byte [$ff]
+palette_fe09:
+.byte [$ff ^ [g2]]
+palette_fe0a:
+.byte [$ff ^ [b6 | b4]]
+palette_fe0b:
+.byte [$ff ^ [g6]]
+palette_fe0c:
+.byte [$ff ^ [b7 | b5]]
+palette_fe0d:
+.byte [$ff ^ [g7 | r7 | r5]]
+palette_fe0e:
+.byte [$ff]
+palette_fe0f:
+.byte [$ff ^ [g3 | r3 | r1]]

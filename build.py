@@ -31,6 +31,7 @@ def system(command):
     if os.system(command):
         sys.exit(1)
 
+# Dictionary mapping RGB values from PNG files to logical colours.
 palette = {"\x00\x00\x00": 0,
            "\xff\x00\x00": 1,
            "\x00\xff\x00": 2,
@@ -48,6 +49,8 @@ palette = {"\x00\x00\x00": 0,
            "\x80\xff\xff": 14,
            "\xff\xff\xff": 15}
 
+# Bit patterns used to encode the rightmost pixel in each byte of screen memory
+# for each logical colour in MODE 2.
 bits = [0x00, 0x01, 0x04, 0x05, 0x10, 0x11, 0x14, 0x15,
         0x40, 0x41, 0x44, 0x45, 0x50, 0x51, 0x54, 0x55]
 
@@ -122,7 +125,7 @@ if __name__ == "__main__":
     code_start = 0x0e00
     
     # Encode images.
-    sprites = ["blank", "floor1"]
+    sprites = ["blank", "floor1", "trunk1"]
     sprite_data = ""
     
     for sprite in sprites:
@@ -132,9 +135,18 @@ if __name__ == "__main__":
     sprite_data += "\x00" * ((64 - len(sprites)) * 32)
     
     # Encode level data.
-    #t = open("levels/default.txt").readlines()
+    lines = open("levels/default.txt").readlines()
+    lines.reverse()
     
-    level_data = (chr(0) + chr(0x20)) * 1280
+    level_data = ""
+    
+    for line in lines:
+        row = map(int, line.strip().split())
+        row.reverse()
+        for tile in row:
+            bank = tile / 32
+            index = tile % 32
+            level_data += chr((index * 32) | bank)
     
     # Assemble the source code.
     system("ophis mapscroll2.oph -o game.rom")

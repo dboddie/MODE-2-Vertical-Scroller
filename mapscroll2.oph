@@ -36,7 +36,7 @@
 .alias screen_high $77
 
 .alias scroll_offset $78
-.alias row_counter $79
+.alias remaining_row_tiles $79
 .alias palette_offset $7a
 .alias palette_counter $7b
 
@@ -46,6 +46,7 @@
 .alias scenery_start $3760
 
 .alias level_base [data_start + sprites_size]
+.alias level_height 128
 .alias level_ptr $82
 .alias level_ptr_low $82
 .alias level_ptr_high $83
@@ -59,6 +60,7 @@
 .alias tile_address $85
 .alias tile_address_low $85
 .alias tile_address_high $86
+.alias row_counter $87
 
 .org $8000
 
@@ -269,8 +271,10 @@ show:
 
     ldx #0
     stx frame_counter
-    lda #4                  ; Initialise the scroll offset.
-    sta scroll_offset
+    lda #20
+    sta remaining_row_tiles
+    lda #0
+    sta row_counter
 
 main_loop:
 
@@ -318,10 +322,17 @@ main_loop:
         dex                     ; 2 c
         bpl show_palette_loop   ; 2 c
 
+    lda row_counter             ; If there are no more rows to show, skip the
+    cmp #level_height           ; tile plotting code.
+    bcs continue_scroll
+
     lda #4
     sta plot_counter
 
     plot_loop:
+
+        lda remaining_row_tiles
+        beq plot_loop_end
 
         ldy #0
         lda (level_ptr),y
@@ -360,9 +371,11 @@ main_loop:
         inc level_ptr_high
 
         plot_loop_next:
+        dec remaining_row_tiles
         dec plot_counter
         bne plot_loop
 
+    plot_loop_end:
 ;    lda scenery_ptr_low
 ;    adc #$7e
 ;    sta scenery_ptr_low
@@ -371,12 +384,12 @@ main_loop:
 ;    sta scenery_ptr_high
 ;    clc
 
-    lda scenery_ptr_high
+    lda scenery_ptr_high            ; Check for the top of screen memory.
     cmp #$2f
     bne continue_scroll
 
-    lda #$e0
-    sta scenery_ptr_low
+    lda #$e0                        ; Start plotting scenery at the bottom of
+    sta scenery_ptr_low             ; screen memory if we reach the top.
     lda #$7f
     sta scenery_ptr_high
 
@@ -423,6 +436,10 @@ main_loop:
 ;
 ;    k4_pressed:
 
+    lda row_counter             ; If there are no more rows to show, skip the
+    cmp #[level_height + 1]     ; scrolling code.
+    beq next_frame
+
     clc
     lda text_lines
     adc #10                 ; Increase the number of half scanlines to cover
@@ -457,6 +474,10 @@ main_loop:
         sta $fe02
         lda screen_high
         sta $fe03
+
+        lda #20
+        sta remaining_row_tiles
+        inc row_counter
 
         lda #initial_scanlines
 

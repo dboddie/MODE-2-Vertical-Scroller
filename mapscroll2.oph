@@ -45,7 +45,10 @@
 .alias scenery_ptr_high $81
 .alias scenery_start $3760
 
-.alias level_base [data_start + sprites_size]
+.alias palette_base [data_start + sprites_size]
+.alias unpacked_palette $90
+
+.alias level_base [palette_base + 8]
 .alias level_height 128
 .alias level_ptr $82
 .alias level_ptr_low $82
@@ -317,7 +320,7 @@ main_loop:
     ldx #7
     
     show_palette_loop:
-        lda palette_fe08,x      ; 4 c
+        lda palette_base,x      ; 4 c
         sta $fe08,x             ; 4 c
         dex                     ; 2 c
         bpl show_palette_loop   ; 2 c
@@ -634,22 +637,5 @@ text:
 .byte 17,7, 31,0,15
 .byte "  MODE 2  map demo  "
 text_end:
-
-palette_fe08:
-.byte [$ff]
-palette_fe09:
-.byte [$ff ^ [g2]]
-palette_fe0a:
-.byte [$ff ^ [b6 | b4]]
-palette_fe0b:
-.byte [$ff ^ [g6]]
-palette_fe0c:
-.byte [$ff ^ [b7 | b5]]
-palette_fe0d:
-.byte [$ff ^ [g7 | r7 | r5]]
-palette_fe0e:
-.byte [$ff]
-palette_fe0f:
-.byte [$ff ^ [g3 | r3 | r1]]
 
 data_start:

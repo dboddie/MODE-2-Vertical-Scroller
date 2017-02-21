@@ -18,10 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os, stat, struct, sys
-import Image
 
-from palette import get_entries, black, red, green, yellow, blue, magenta, \
-                    cyan, white
+from Tools.graphics import encode_palette, read_sprites
+from Tools.levels import encode_level, read_levels
+
 import UEFfile
 
 version = "0.1"
@@ -30,89 +30,6 @@ def system(command):
 
     if os.system(command):
         sys.exit(1)
-
-# Dictionary mapping RGB values from PNG files to logical colours.
-palette = {"\x00\x00\x00": 0,
-           "\xff\x00\x00": 1,
-           "\x00\xff\x00": 2,
-           "\xff\xff\x00": 3,
-           "\x00\x00\xff": 4,
-           "\xff\x00\xff": 5,
-           "\x00\xff\xff": 6,
-           "\xff\xff\xff": 7,
-           "\x80\x80\x80": 8,
-           "\xff\x80\x80": 9,
-           "\x80\xff\x80": 10,
-           "\xff\xff\x80": 11,
-           "\x80\x80\xff": 12,
-           "\xff\x80\xff": 13,
-           "\x80\xff\xff": 14,
-           "\xff\xff\xff": 15}
-
-# Bit patterns used to encode the rightmost pixel in each byte of screen memory
-# for each logical colour in MODE 2.
-bits = [0x00, 0x01, 0x04, 0x05, 0x10, 0x11, 0x14, 0x15,
-        0x40, 0x41, 0x44, 0x45, 0x50, 0x51, 0x54, 0x55]
-
-def read_png(path):
-
-    im = Image.open(path).convert("RGB")
-    s = im.tostring()
-    
-    data = []
-    a = 0
-    
-    i = 0
-    while i < im.size[1]:
-    
-        line = []
-        
-        j = 0
-        while j < im.size[0]:
-        
-            line.append(palette[s[a:a+3]])
-            a += 3
-            j += 1
-        
-        i += 1
-        data.append(line)
-    
-    return data
-
-def read_sprite(lines):
-
-    data = ""
-    
-    # Read 8 rows at a time.
-    for row in range(0, len(lines), 8):
-    
-        width = len(lines[0])
-        
-        # Read 2 columns at a time.
-        for column in range(0, width, 2):
-        
-            # Read the rows.
-            for line in lines[row:row + 8]:
-            
-                shift = 1
-                byte = 0
-                for pixel in line[column:column + 2]:
-                
-                    byte = byte | (bits[pixel] << shift)
-                    shift -= 1
-                
-                data += chr(byte)
-    
-    return data
-
-rainbow_colours = [red, yellow, green, cyan, blue, magenta]
-
-def rainbow(i, colours, s):
-
-    # Each physical colour is used in two adjacent rows.
-    c1 = colours[(i/s) % len(colours)]
-    c2 = colours[(((i+1)/s) + 1) % len(colours)]
-    return [black, c1, c2, white]
 
 if __name__ == "__main__":
 
@@ -124,35 +41,21 @@ if __name__ == "__main__":
     # Memory map
     code_start = 0x0e00
     
-    # Encode images.
-    sprites = ["blank", "floor1", "trunk1"]
-    sprite_data = ""
-    
-    for sprite in sprites:
-        sprite_data += read_sprite(read_png(os.path.join("images", sprite) + ".png"))
-    
-    # Add padding data.
-    sprite_data += "\x00" * ((64 - len(sprites)) * 32)
+    # Encode images - these are listed in the Tools.graphics module.
+    sprite_data = read_sprites()
     
     # Encode level data.
-    lines = open("levels/default.txt").readlines()
-    lines.reverse()
+    palette_info, level_lines = read_levels("levels/default.levels")
     
-    level_data = ""
-    
-    for line in lines:
-        row = map(int, line.strip().split())
-        row.reverse()
-        for tile in row:
-            bank = tile / 32
-            index = tile % 32
-            level_data += chr((index * 32) | bank)
+    palette_data = encode_palette(palette_info)
+    level_data = encode_level(level_lines)
     
     # Assemble the source code.
     system("ophis mapscroll2.oph -o game.rom")
     
     rom_data = open("game.rom").read()
     rom_data += sprite_data
+    rom_data += palette_data
     rom_data += level_data
     
     open("game.rom", "w").write(rom_data)

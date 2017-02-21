@@ -38,7 +38,8 @@ bits = [0x00, 0x01, 0x04, 0x05, 0x10, 0x11, 0x14, 0x15,
 # build script and the editor.
 sprites = [
     "blank", "backwall0", "backwall1", "ledge0", "ledge1", "light0", "light1",
-    "light2", "ledge2", "backwall2", "backwall3", "backwall4", "backwall5"]
+    "light2", "ledge2", "backwall2", "backwall3", "backwall4", "backwall5",
+    "crate0", "crate1", "crate2", "crate3"]
     
 
 def read_png(path):

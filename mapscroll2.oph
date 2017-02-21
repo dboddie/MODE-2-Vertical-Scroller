@@ -329,7 +329,7 @@ main_loop:
     cmp #level_height           ; tile plotting code.
     bcs continue_scroll
 
-    lda #4
+    lda #3                      ; 5 for fast scrolling (frame delay 1)
     sta plot_counter
 
     plot_loop:
@@ -634,7 +634,7 @@ show_message:
 
 text:
 .byte 22,2, 23,1,0,0,0,0,0,0,0,0
-.byte 17,7, 31,0,15
+.byte 17,7, 31,0,5
 .byte "  MODE 2  map demo  "
 text_end:
 

@@ -25,12 +25,13 @@ def read_levels(file_name):
         r, g, b = map(int, rgb.split(","))
         palette_info.append((r, g, b))
     
-    for i in range(3):
-        palette_info.insert(4, palette_info[4])
-    for i in range(3):
-        palette_info.insert(8, palette_info[8])
-    for i in range(3):
-        palette_info.insert(12, palette_info[12])
+    if len(palette_info) == 7:
+        for i in range(3):
+            palette_info.insert(4, palette_info[4])
+        for i in range(3):
+            palette_info.insert(8, palette_info[8])
+        for i in range(3):
+            palette_info.insert(12, palette_info[12])
     
     i = 0
     while i < len(lines):

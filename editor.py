@@ -100,7 +100,14 @@ class LevelWidget(QWidget):
             
                 f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[:4])))
                 f.write(" ")
-                f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[4:16:4])))
+                if palette[4] == palette[5] == palette[6] == palette[7] and \
+                   palette[8] == palette[9] == palette[10] == palette[11] and \
+                   palette[12] == palette[13] == palette[14] == palette[15]:
+                   
+                    f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[4:16:4])))
+                else:
+                    f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[4:16])))
+                
                 f.write("\n")
 
                 for line in level:

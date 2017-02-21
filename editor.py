@@ -31,9 +31,9 @@ __version__ = "0.1"
 
 default_palette = [
     (0,0,0), (255,0,0), (0,255,0), (255,255,0),
-    (0,0,255), (255,0,255), (0,255,255), (255,255,255),
-    (255,0,255), (192,40,40), (40,192,40), (192,192,40),
-    (0,0,255), (192,40,192), (40,192,192), (192,192,192)
+    (0,0,255), (0,0,255), (0,0,255), (0,0,255),
+    (255,0,255), (255,0,255), (255,0,255), (255,0,255),
+    (0,255,255), (0,255,255), (0,255,255), (0,255,255)
     ]
 
 class LevelWidget(QWidget):
@@ -90,6 +90,7 @@ class LevelWidget(QWidget):
         self.palettes = [palette]
         self.levels = [level]
         self.rows = len(level)
+        self.loadImages(palette)
     
     def saveLevels(self, file_name):
     
@@ -97,9 +98,9 @@ class LevelWidget(QWidget):
             f = open(file_name, "w")
             for palette, level in zip(self.palettes, self.levels):
             
-                f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[:8])))
-                f.write("\n")
-                f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[8:])))
+                f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[:4])))
+                f.write(" ")
+                f.write(" ".join(map(lambda x: "%i,%i,%i" % x, palette[4:16:4])))
                 f.write("\n")
 
                 for line in level:
@@ -448,5 +449,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     window = EditorWindow()
+    
+    if len(app.arguments()) > 1:
+        window.loadLevels(unicode(app.arguments()[1]))
+    
     window.show()
     sys.exit(app.exec_())

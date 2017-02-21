@@ -18,12 +18,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 def read_levels(file_name):
 
     lines = open(file_name).readlines()
-    palette_text = lines.pop(0) + lines.pop(0)
+    palette_text = lines.pop(0)
     palette_info = []
     
     for rgb in palette_text.split():
         r, g, b = map(int, rgb.split(","))
         palette_info.append((r, g, b))
+    
+    for i in range(3):
+        palette_info.insert(4, palette_info[4])
+    for i in range(3):
+        palette_info.insert(8, palette_info[8])
+    for i in range(3):
+        palette_info.insert(12, palette_info[12])
     
     i = 0
     while i < len(lines):
@@ -43,8 +50,8 @@ def encode_level(lines):
         line.reverse()
         
         for tile in line:
-            bank = tile / 32
-            index = tile % 32
+            bank = tile / 8
+            index = tile % 8
             level_data += chr((index * 32) | bank)
     
     return level_data

@@ -222,9 +222,10 @@ show:
     lda #>level_base
     sta level_ptr_high
 
-    ; Clear the vsync interrupt bit.
+    ; Clear the vsync interrupt by setting a bit.
 
-    lda #$10
+    lda $f4
+    ora #$10
     sta $fe05
 
     ; Wait until the vsync bit is cleared.
@@ -240,7 +241,8 @@ show:
     bit $fe00
     beq wait1
 
-    lda #$10
+    lda $f4
+    ora #$10
     sta $fe05
 
     calibration:
@@ -514,7 +516,8 @@ main_loop:
     bit $fe00               ; 4 c
     beq wait2               ; 3 c
 
-    lda #$10                ; 2 c
+    lda $f4                 ; 2 c
+    ora #$10
     sta $fe05               ; 4 c
 
     lda frame_counter       ; 3 c
@@ -562,9 +565,10 @@ calibrate:
         beq calibration_loop; 3 c
                             ; (11 * 5) + 2 + 9 = 66
 
-    ; Clear the vsync interrupt bit.
+    ; Clear the vsync interrupt by setting a bit.
 
-    lda #$10
+    lda $f4                 ; 2 c
+    ora #$10
     sta $fe05
 
     rts

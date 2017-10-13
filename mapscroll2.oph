@@ -45,7 +45,15 @@
 .alias scenery_ptr_high $81
 .alias scenery_start $3760
 
-.alias palette_base [data_start + sprites_size]
+.alias tiles_base data_start
+.alias tiles_base_low <data_start
+.alias tiles_base_high >data_start
+.alias tiles_size $800
+
+.alias sprites_base [tiles_base + tiles_size]
+.alias sprites_size $300
+
+.alias palette_base [sprites_base + sprites_size]
 .alias unpacked_palette $90
 
 .alias level_base [palette_base + 8]
@@ -54,16 +62,19 @@
 .alias level_ptr_low $82
 .alias level_ptr_high $83
 
-.alias sprite_base data_start
-.alias sprite_base_low <data_start
-.alias sprite_base_high >data_start
-.alias sprites_size $800
-
 .alias plot_counter $84
-.alias tile_address $85
-.alias tile_address_low $85
-.alias tile_address_high $86
+.alias tiles_address $85
+.alias tiles_address_low $85
+.alias tiles_address_high $86
 .alias row_counter $87
+
+.alias sprite_address $88
+.alias sprite_address_low $88
+.alias sprite_address_high $89
+
+.alias screen_address $8a
+.alias screen_address_low $8a
+.alias screen_address_high $8b
 
 .org $8000
 
@@ -345,22 +356,22 @@ main_loop:
 
         clc
         and #$e0                ; Extract the tile offset.
-        adc #sprite_base_low
-        sta tile_address_low
+        adc #tiles_base_low
+        sta tiles_address_low
 
         txa
         and #$07                ; Extract the tile bank.
-        adc #sprite_base_high
-        sta tile_address_high
+        adc #tiles_base_high
+        sta tiles_address_high
         clc
 
         ldy #31
-        plot_tile_loop:
+        plot_tiles_loop:
 
-            lda (tile_address),y
+            lda (tiles_address),y
             sta (scenery_ptr),y
             dey
-            bpl plot_tile_loop
+            bpl plot_tiles_loop
 
         sec
         lda scenery_ptr_low
@@ -498,6 +509,8 @@ main_loop:
     clc
 
     next_frame:
+
+;    jsr plot_sprite
 
 ;    lda #$00                ; Blank the palette.
 ;    sta $fe08
@@ -642,4 +655,39 @@ text:
 .byte "  MODE 2  map demo  "
 text_end:
 
+plot_sprite:
+
+    lda #<sprites_base
+    sta sprite_address_low
+    lda #>sprites_base
+    sta sprite_address_high
+
+    lda #$10
+    sta screen_address_low
+    lda #$58
+    sta screen_address_high
+
+    ldy #47
+    plot_sprite_row:
+
+        lda (sprite_address),y
+        eor (screen_address),y
+        sta (screen_address),y
+        dey
+        bpl plot_sprite_row
+
+    rts
+
+
 data_start:
+
+; tiles
+; sprites
+; -------
+; palette
+; level
+; -------
+; palette
+; level
+; -------
+; ...

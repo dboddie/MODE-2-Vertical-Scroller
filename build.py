@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os, stat, struct, sys
 
-from Tools.graphics import encode_palette, read_sprites
+from Tools.graphics import encode_palette, read_sprites, read_tiles
 from Tools.levels import encode_level, read_levels
 
 import UEFfile
@@ -42,6 +42,7 @@ if __name__ == "__main__":
     code_start = 0x0e00
     
     # Encode images - these are listed in the Tools.graphics module.
+    tile_data = read_tiles()
     sprite_data = read_sprites()
     
     # Encode level data.
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     system("ophis mapscroll2.oph -o game.rom")
     
     rom_data = open("game.rom").read()
+    rom_data += tile_data
     rom_data += sprite_data
     rom_data += palette_data
     rom_data += level_data

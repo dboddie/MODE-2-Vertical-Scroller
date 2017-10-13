@@ -130,7 +130,7 @@ class LevelWidget(QWidget):
             encode_palette.append(qRgb(r, g, b))
         
         number = 0
-        for sprite in Tools.graphics.sprites:
+        for sprite in Tools.graphics.tiles:
         
             image = QImage(os.path.join("images", sprite + ".png"))
             image = image.convertToFormat(QImage.Format_Indexed8, decode_palette)

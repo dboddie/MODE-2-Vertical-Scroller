@@ -36,11 +36,17 @@ bits = [0x00, 0x01, 0x04, 0x05, 0x10, 0x11, 0x14, 0x15,
 
 # Define all the sprites included in the game. This is imported by both the
 # build script and the editor.
-sprites = [
-    "blank", "backwall0", "backwall1", "ledge0", "ledge1", "light0", "light1",
-    "light2", "ledge2", "backwall2", "backwall3", "backwall4", "backwall5",
-    "crate0", "crate1", "crate2", "crate3"]
-    
+tiles = ["blank", "backwall0", "backwall1", "ledge0",
+         "ledge1", "light0", "light1", "light2",
+         "ledge2", "backwall2", "backwall3", "backwall4",
+         "backwall5", "crate0", "crate1", "crate2",
+         "crate3"]
+
+maximum_tiles = 64
+
+sprites = ["left0", "left1"]
+
+maximum_sprites = 8
 
 def read_png(path):
 
@@ -93,6 +99,18 @@ def read_sprite(lines):
     
     return data
 
+def read_tiles():
+
+    sprite_data = ""
+    
+    for sprite in tiles:
+        sprite_data += read_sprite(read_png(os.path.join("images", sprite) + ".png"))
+    
+    # Add padding data.
+    sprite_data += "\x00" * ((maximum_tiles - len(tiles)) * 32)
+    
+    return sprite_data
+
 def read_sprites():
 
     sprite_data = ""
@@ -101,8 +119,9 @@ def read_sprites():
         sprite_data += read_sprite(read_png(os.path.join("images", sprite) + ".png"))
     
     # Add padding data.
-    sprite_data += "\x00" * ((64 - len(sprites)) * 32)
+    sprite_data += "\x00" * ((maximum_sprites - len(sprites)) * 96)
     
+    print "Sprite data length:", hex(len(sprite_data))
     return sprite_data
 
 def encode_palette(palette_info):
